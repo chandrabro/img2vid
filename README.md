@@ -21,6 +21,13 @@ Upload a picture; the app animates it and exports a video. Everything runs in th
 - **Auto-detect in 3 groups**: 🧑 Humans, 🐕 Animals, 🌳 Non-living things (clouds, trees, sunlight, fire, smoke; works offline). Humans and animals are found as a **whole body** and cut out, so only that body moves (breathing, sway, head nod; birds peck and wander). 🧍 *Tap a person / animal* does the same for one body.
 - **🌐 All scenes tab**: tick "apply to all scenes" (or Quick add) and an effect appears in the same region of every scene; editing it in one scene updates all.
 
+## Added in this update
+- **Apply to all scenes** on every Scene setting: length and transition, camera, depth (Quick or AI), light, film look and one-click moods. Tick "keep the same in all scenes" for live sync, or press "Apply to all now".
+- **🎞 Film look**: colour grades, glow, film grain, cinema bars.
+- **Video shape**: 16:9, 9:16 (Reels/Shorts), square, 4:3, 3:4.
+- **Title card / The End** scenes with your own text.
+- **Autosave** in the browser every 45 s, with a "Restore last session" button.
+
 ## Notes
 - AI options (cut-out, depth, object detection) download free models from a CDN on first use; they need internet and a few seconds. Everything else works offline.
 - Browser text-to-speech cannot be captured into video, so voice-over is recorded with the mic or uploaded.

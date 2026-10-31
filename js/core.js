@@ -48,7 +48,10 @@ let toastTimer = 0;
 function toast(m, ms) { setStatus(m); clearTimeout(toastTimer); toastTimer = setTimeout(() => setStatus(''), ms || 6000); }
 
 function evenInt(v) { return Math.max(2, Math.round(v / 2) * 2); }
+const ASPECTS = { '16:9': 16 / 9, '9:16': 9 / 16, '1:1': 1, '4:3': 4 / 3, '3:4': 3 / 4 };
 function sizeFor(img) {
+  const ar = ASPECTS[PA.aspect];
+  if (ar) { const m = Math.min(PA.quality, Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height)); return ar >= 1 ? [evenInt(m), evenInt(m / ar)] : [evenInt(m * ar), evenInt(m)]; }
   const sc = Math.min(1, PA.quality / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
   return [evenInt((img.naturalWidth || img.width) * sc), evenInt((img.naturalHeight || img.height) * sc)];
 }
@@ -67,6 +70,7 @@ function newScene(img, name) {
     depth: null, depthOn: false, depthInv: false, depthFocus: .5, horizon: .38,
     cam: { mode: 'breathe', amount: 1 },
     light: { from: 'none', to: 'none' },
+    look: { grade: 'none', grain: 0, bloom: 0, bars: false },
     caption: '', voice: null, voiceName: ''
   };
 }

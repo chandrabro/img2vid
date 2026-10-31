@@ -14,6 +14,7 @@
   </div>
   <div class="hbtns">
     <button id="btnSave" disabled>💾 Save project</button>
+    <button id="btnRestore" hidden>↩ Restore last session</button>
     <button id="btnLoad">📂 Open project</button>
     <input id="loadFile" type="file" accept=".json,application/json" hidden>
   </div>
@@ -47,6 +48,7 @@
     </div>
 
     <div id="strip" class="strip"></div>
+    <div class="row"><button id="addTitle">＋ Title card / The End</button><span class="small">adds a text scene, e.g. a title before the story</span></div>
   </div>
 
   <div id="result" class="card" hidden>
@@ -198,6 +200,7 @@
   <div class="pane" data-pane="scene" hidden>
     <div class="card">
       <h2>This scene</h2>
+      <div class="row syncrow"><label class="chk"><input type="checkbox" data-sync="time"> 🌐 keep the same in <b>all scenes</b></label><button class="applyall" data-grp="time">Apply to all now</button></div>
       <div class="row"><label>Length</label><input id="dur" type="range" min="2" max="30" step="1" value="6"><span id="durVal" class="small">6 s</span></div>
       <div class="row"><label>Caption</label><input id="caption" type="text" maxlength="120" placeholder="e.g. Morning in the village"></div>
       <div class="row"><label>Into next</label><select id="transType">
@@ -207,6 +210,7 @@
 
     <div class="card">
       <h2>🎥 Camera</h2>
+      <div class="row syncrow"><label class="chk"><input type="checkbox" data-sync="cam"> 🌐 keep the same in <b>all scenes</b></label><button class="applyall" data-grp="cam">Apply to all now</button></div>
       <div class="row"><label>Move</label><select id="camMode">
         <option value="breathe">Gentle zoom in &amp; out</option><option value="in">Zoom in</option><option value="out">Zoom out</option>
         <option value="left">Pan left</option><option value="right">Pan right</option>
@@ -217,6 +221,7 @@
 
     <div class="card">
       <h2>🏔 Depth (real 3D camera)</h2>
+      <div class="row syncrow"><label class="chk"><input type="checkbox" data-sync="depth"> 🌐 keep the same in <b>all scenes</b></label><button class="applyall" data-grp="depth">Apply to all now</button></div>
       <p class="small">Gives the picture depth so near things move more than far things when the camera moves. <b>Quick</b> is instant (ground in front, sky far). <b>AI</b> reads the actual picture (about 25 MB download once).</p>
       <div class="row"><button id="depthQuick">⚡ Quick depth</button><button id="depthAI">🤖 AI depth</button><button id="depthOff">Off</button></div>
       <div class="row"><label>Focus</label><input id="depthFocus" type="range" min="0" max="1" step="0.02" value="0.5"></div>
@@ -227,14 +232,28 @@
 
     <div class="card">
       <h2>🌅 Light &amp; time of day</h2>
+      <div class="row syncrow"><label class="chk"><input type="checkbox" data-sync="light"> 🌐 keep the same in <b>all scenes</b></label><button class="applyall" data-grp="light">Apply to all now</button></div>
       <div class="row"><label>Start</label><select id="lightFrom"></select></div>
       <div class="row"><label>End</label><select id="lightTo"></select></div>
       <p class="small">The light changes smoothly from Start to End during the scene (for example Dawn → Morning).</p>
     </div>
 
     <div class="card">
+      <h2>🎞 Film look</h2>
+      <div class="row syncrow"><label class="chk"><input type="checkbox" data-sync="look"> 🌐 keep the same in <b>all scenes</b></label><button class="applyall" data-grp="look">Apply to all now</button></div>
+      <div class="row"><label>Colour</label><select id="lookGrade">
+        <option value="none">Natural</option><option value="cinematic">Cinematic</option><option value="warm">Warm</option><option value="cool">Cool</option>
+        <option value="vintage">Vintage</option><option value="vivid">Vivid</option><option value="soft">Soft</option><option value="bw">Black &amp; white</option></select></div>
+      <div class="row"><label>Glow</label><input id="lookBloom" type="range" min="0" max="1" step="0.05" value="0"><span class="small">dreamy bloom</span></div>
+      <div class="row"><label>Film grain</label><input id="lookGrain" type="range" min="0" max="1" step="0.05" value="0"></div>
+      <div class="row"><label>Cinema bars</label><input id="lookBars" type="checkbox"> <span class="small">black bars top and bottom</span></div>
+      <p class="small">Colour and glow need Chrome, Edge or Firefox. Grain and bars work everywhere.</p>
+    </div>
+
+    <div class="card">
       <h2>One-click moods</h2>
       <p class="small">Sets light, sound, camera and adds sky and air effects to this scene.</p>
+      <label class="chk"><input id="moodAll" type="checkbox"> apply the mood to <b>all scenes</b></label>
       <div class="tools">
         <button class="preset" data-preset="morning">🌄 Village morning</button>
         <button class="preset" data-preset="sunset">🌇 Golden sunset</button>
@@ -275,6 +294,7 @@
     <div class="card">
       <h2>Video settings</h2>
       <div class="row"><label>Quality</label><select id="res"><option value="960">Fast (960 px)</option><option value="1280" selected>HD (1280 px)</option><option value="1920">Full HD (1920 px)</option></select></div>
+      <div class="row"><label>Shape</label><select id="aspect"><option value="auto">Same as picture</option><option value="16:9">Wide 16:9 (YouTube)</option><option value="9:16">Tall 9:16 (Reels / Shorts)</option><option value="1:1">Square 1:1</option><option value="4:3">4:3</option><option value="3:4">Portrait 3:4</option></select></div>
       <div class="row"><label>Frames</label><select id="fpsSel"><option value="24">24 per second</option><option value="30" selected>30 per second</option></select></div>
       <p class="small">Total length: <b id="totalLen">0 s</b> (all scenes, minus overlaps).</p>
     </div>
@@ -308,5 +328,6 @@
 <script src="js/detect.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/ui2.js"></script>
+<script src="js/ui3.js"></script>
 </body>
 </html>

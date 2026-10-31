@@ -82,6 +82,7 @@ function renderSceneTo(sc, tctx, t, tl) {
   const L = lightAt(sc, tl); if (L) applyLight(cx, L);
   for (const r of sc.regions) drawRegion(r, t, tl, 'emis');
   present(sc, tctx, tl);
+  applyLook(tctx, sc, t);
   drawCaption(tctx, sc, tl);
 }
 
@@ -124,4 +125,41 @@ function renderProject(T, tctx) {
   renderSceneTo(PA.scenes[a.i], actx, T - a.start, T - a.start);
   renderSceneTo(PA.scenes[b.i], bctx, T - b.start, T - b.start);
   composeTransition(tctx, BUF[0], BUF[1], q, PA.scenes[a.i].transType);
+}
+
+/* ---------- film look: grade, bloom, grain, letterbox (all free canvas maths) ---------- */
+const GRADES = {
+  none: '', cinematic: 'contrast(1.12) saturate(1.08) sepia(.1)', warm: 'sepia(.22) saturate(1.2) contrast(1.05) brightness(1.03)',
+  vintage: 'sepia(.4) contrast(.95) saturate(.8) brightness(1.02)', vivid: 'saturate(1.4) contrast(1.08)', cool: 'saturate(.95) hue-rotate(-8deg) contrast(1.06) brightness(.98)',
+  bw: 'grayscale(1) contrast(1.12)', soft: 'brightness(1.05) saturate(.92) contrast(.94)'
+};
+let LOOKBUF = null, GRAIN = null;
+function grainTile() {
+  if (GRAIN) return GRAIN;
+  const c = makeCanvas(256, 256), x = c.getContext('2d'), id = x.createImageData(256, 256), r = rng(5);
+  for (let i = 0; i < 65536; i++) { const v = 128 + (r() - .5) * 150; id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255; }
+  x.putImageData(id, 0, 0); return (GRAIN = c);
+}
+function applyLook(tctx, sc, t) {
+  const L = sc.look; if (!L) return;
+  const g = GRADES[L.grade] || '';
+  if ((g || L.bloom > 0) && !('filter' in tctx)) { /* Safari: no canvas filters; grain and bars still work */ }
+  else if (g || L.bloom > 0) {
+    if (!LOOKBUF || LOOKBUF.width !== W || LOOKBUF.height !== H) LOOKBUF = makeCanvas(W, H);
+    const b = LOOKBUF.getContext('2d');
+    if (g) {
+      b.clearRect(0, 0, W, H); b.drawImage(tctx.canvas, 0, 0);
+      tctx.save(); tctx.filter = g; tctx.drawImage(LOOKBUF, 0, 0); tctx.restore();
+    }
+    if (L.bloom > 0) {
+      b.clearRect(0, 0, W, H); b.filter = `blur(${Math.max(4, W / 90)}px) brightness(1.25)`; b.drawImage(tctx.canvas, 0, 0); b.filter = 'none';
+      tctx.save(); tctx.globalCompositeOperation = 'screen'; tctx.globalAlpha = clamp(L.bloom, 0, 1) * .55; tctx.drawImage(LOOKBUF, 0, 0); tctx.restore();
+    }
+  }
+  if (L.grain > 0) {
+    const tile = grainTile(), n = Math.floor(t * 14), ox = (hash(n) * 256) | 0, oy = (hash(n + 77) * 256) | 0;
+    tctx.save(); tctx.globalCompositeOperation = 'soft-light'; tctx.globalAlpha = clamp(L.grain, 0, 1) * .8;
+    tctx.fillStyle = tctx.createPattern(tile, 'repeat'); tctx.translate(-ox, -oy); tctx.fillRect(ox, oy, W, H); tctx.restore();
+  }
+  if (L.bars) { const bh = Math.round(H * .105); tctx.save(); tctx.fillStyle = '#000'; tctx.fillRect(0, 0, W, bh); tctx.fillRect(0, H - bh, W, bh); tctx.restore(); }
 }

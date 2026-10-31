@@ -167,11 +167,11 @@ function imgToDataURL(img, maxSide) {
 function pick(o, keys) { const r = {}; keys.forEach(k => { if (o[k] !== undefined) r[k] = JSON.parse(JSON.stringify(o[k])); }); return r; }
 function serializeProject() {
   return {
-    app: 'photo-animator-studio', version: 3, quality: PA.quality, fps: PA.fps,
+    app: 'photo-animator-studio', version: 3, quality: PA.quality, fps: PA.fps, aspect: PA.aspect || 'auto',
     audio: { amb: PA.audio.amb, master: PA.audio.master, musicVol: PA.audio.musicVol },
     scenes: PA.scenes.map(sc => ({
       name: sc.name, img: imgToDataURL(sc.img, 1800), dur: sc.dur, trans: sc.trans, transType: sc.transType,
-      cam: sc.cam, light: sc.light, caption: sc.caption, depthOn: sc.depthOn, depthInv: sc.depthInv, depthFocus: sc.depthFocus, horizon: sc.horizon,
+      cam: sc.cam, light: sc.light, look: sc.look, caption: sc.caption, depthOn: sc.depthOn, depthInv: sc.depthInv, depthFocus: sc.depthFocus, horizon: sc.horizon,
       depth: sc.depth ? { png: sc.depth.canvas.toDataURL('image/png'), kind: sc.depth.kind } : null,
       regions: sc.regions.map(r => pick(r, REGION_KEYS)),
       actors: sc.actors.map(a => Object.assign(pick(a, ACTOR_KEYS), { maskPNG: a.mask.toDataURL('image/png') }))
@@ -183,13 +183,13 @@ async function imageToCanvas(url) { const i = await loadImageURL(url), c = makeC
 async function loadProject(data) {
   if (!data || data.app !== 'photo-animator-studio') throw new Error('This is not a Photo Animator project file.');
   PA.scenes = []; PA.cur = 0; PA.selKind = null; PA.selIdx = -1;
-  PA.quality = data.quality || 1280; PA.fps = data.fps || 30;
+  PA.quality = data.quality || 1280; PA.fps = data.fps || 30; PA.aspect = data.aspect || 'auto';
   if (data.audio) { Object.assign(PA.audio.amb, data.audio.amb || {}); PA.audio.master = data.audio.master ?? .9; PA.audio.musicVol = data.audio.musicVol ?? .5; }
   for (const s of data.scenes) {
     const img = await loadImageURL(s.img);
     if (!PA.scenes.length) { [W, H] = sizeFor(img); resizeViews(); }
     const sc = newScene(img, s.name);
-    Object.assign(sc, { dur: s.dur, trans: s.trans, transType: s.transType, cam: s.cam, light: s.light, caption: s.caption || '', depthInv: !!s.depthInv, depthFocus: s.depthFocus ?? .5, horizon: s.horizon ?? .38 });
+    Object.assign(sc, { dur: s.dur, trans: s.trans, transType: s.transType, cam: s.cam, light: s.light, look: s.look || { grade: 'none', grain: 0, bloom: 0, bars: false }, caption: s.caption || '', depthInv: !!s.depthInv, depthFocus: s.depthFocus ?? .5, horizon: s.horizon ?? .38 });
     sc.regions = (s.regions || []).map(r => Object.assign(newRegion(r.type, r), r));
     sc.actors = [];
     for (const a of (s.actors || [])) {

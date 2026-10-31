@@ -218,6 +218,7 @@ function refreshScenePane() {
   $('#camMode').value = sc.cam.mode; $('#camAmt').value = sc.cam.amount;
   $('#depthFocus').value = sc.depthFocus; $('#horizon').value = sc.horizon; $('#depthInv').checked = sc.depthInv; $('#depthStatus').textContent = depthStatusText(sc);
   $('#lightFrom').value = sc.light.from; $('#lightTo').value = sc.light.to;
+  if (typeof refreshLookPane === 'function') refreshLookPane();
 }
 $('#dur').oninput = e => { const sc = curScene(); sc.dur = +e.target.value; $('#durVal').textContent = sc.dur + ' s'; sc.regions.forEach(r => { if (r.end > sc.dur) r.end = 0; if (r.delay > sc.dur - .5) r.delay = 0; }); refreshStripDur(); buildTimeline(); updateTotal(); };
 function refreshStripDur() { $$('#strip .thumb .cap span:last-child').forEach((s, i) => { s.textContent = (PA.scenes[i] ? PA.scenes[i].dur : 0) + 's'; }); }
