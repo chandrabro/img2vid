@@ -204,8 +204,8 @@
       <div class="row"><label>Length</label><input id="dur" type="range" min="2" max="30" step="1" value="6"><span id="durVal" class="small">6 s</span></div>
       <div class="row"><label>Caption</label><input id="caption" type="text" maxlength="120" placeholder="e.g. Morning in the village"></div>
       <div class="row"><label>Into next</label><select id="transType">
-        <option value="fade">Fade</option><option value="dip">Dip to black</option><option value="slide">Slide</option><option value="wipe">Wipe</option><option value="none">Cut</option></select>
-        <input id="transDur" type="range" min="0.3" max="2.5" step="0.1" value="0.8" style="max-width:90px"><span id="transVal" class="small">0.8 s</span></div>
+        <option value="smooth">Smooth cross-zoom (best)</option><option value="blur">Blur dissolve</option><option value="fade">Fade</option><option value="dip">Dip to black</option><option value="slide">Slide</option><option value="wipe">Wipe</option><option value="none">Cut</option></select>
+        <input id="transDur" type="range" min="0.3" max="3" step="0.1" value="1.2" style="max-width:90px"><span id="transVal" class="small">0.8 s</span></div>
     </div>
 
     <div class="card">
@@ -278,7 +278,7 @@
     <div class="card">
       <h2>Your own music / audio</h2>
       <div class="row"><input id="musicFile" type="file" accept="audio/*"></div>
-      <div class="row"><label>Volume</label><input id="musicVol" type="range" min="0" max="1" step="0.05" value="0.5"><button id="musicClear">Remove</button></div>
+      <div class="row"><label>Volume</label><input id="musicVol" type="range" min="0" max="1" step="0.05" value="0.5"><button id="musicPlay">▶ Preview music</button><button id="musicClear">Remove</button></div>
       <p id="musicStatus" class="small"></p>
     </div>
     <div class="card">

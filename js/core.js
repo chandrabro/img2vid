@@ -65,7 +65,7 @@ function newScene(img, name) {
   return {
     id: 's' + (PA.nextId++), name: name || 'Scene', img,
     orig: null, base: null, comp: null, compCtx: null,
-    dur: 6, trans: .8, transType: 'fade',
+    dur: 6, trans: 1.2, transType: 'smooth',
     regions: [], actors: [],
     depth: null, depthOn: false, depthInv: false, depthFocus: .5, horizon: .38,
     cam: { mode: 'breathe', amount: 1 },

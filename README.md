@@ -28,6 +28,11 @@ Upload a picture; the app animates it and exports a video. Everything runs in th
 - **Title card / The End** scenes with your own text.
 - **Autosave** in the browser every 45 s, with a "Restore last session" button.
 
+## Sound preview and transitions
+- Voice-over and music previews have ▶ / ■ Stop buttons.
+- Pressing ▶ Play (or Play all scenes) now plays ambience, your music and the voice-over together with the picture. Ambient, master and music volume sliders change the sound live.
+- New default transition **Smooth cross-zoom** (1.2 s): both scenes keep moving while they blend, with an eased cross-fade. **Blur dissolve** is the other soft option.
+
 ## Notes
 - AI options (cut-out, depth, object detection) download free models from a CDN on first use; they need internet and a few seconds. Everything else works offline.
 - Browser text-to-speech cannot be captured into video, so voice-over is recorded with the mic or uploaded.

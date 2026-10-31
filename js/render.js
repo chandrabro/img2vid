@@ -93,10 +93,21 @@ function ensureBufs() {
     if (!BUF[i] || BUF[i].width !== W || BUF[i].height !== H) { BUF[i] = makeCanvas(W, H); }
   }
 }
+const smoother = q => q * q * q * (q * (q * 6 - 15) + 10);
+function drawScaled(tctx, img, s, alpha) {
+  tctx.save(); tctx.globalAlpha = alpha; tctx.translate(W / 2, H / 2); tctx.scale(s, s); tctx.translate(-W / 2, -H / 2); tctx.drawImage(img, 0, 0); tctx.restore();
+}
 function composeTransition(tctx, A, B, q, type) {
-  const e = smooth(q);
+  const e = smooth(q), m = smoother(q);
   tctx.save();
-  if (type === 'dip') {
+  if (type === 'smooth') {
+    /* both scenes keep moving; A drifts forward while B settles in from slightly closer: the eye reads one continuous camera move */
+    drawScaled(tctx, A, 1 + .06 * m, 1);
+    drawScaled(tctx, B, 1.06 - .06 * m, m);
+  } else if (type === 'blur' && 'filter' in tctx) {
+    const px = Math.sin(Math.PI * q) * Math.max(6, W / 70);
+    tctx.filter = `blur(${px.toFixed(1)}px)`; tctx.drawImage(A, 0, 0); tctx.globalAlpha = m; tctx.drawImage(B, 0, 0); tctx.filter = 'none';
+  } else if (type === 'dip') {
     tctx.drawImage(q < .5 ? A : B, 0, 0);
     tctx.fillStyle = `rgba(0,0,0,${q < .5 ? q * 2 : (1 - q) * 2})`; tctx.fillRect(0, 0, W, H);
   } else if (type === 'slide') {
@@ -105,7 +116,7 @@ function composeTransition(tctx, A, B, q, type) {
     tctx.drawImage(A, 0, 0);
     tctx.beginPath(); tctx.rect(0, 0, W * e, H); tctx.clip(); tctx.drawImage(B, 0, 0);
   } else {
-    tctx.drawImage(A, 0, 0); tctx.globalAlpha = e; tctx.drawImage(B, 0, 0);
+    tctx.drawImage(A, 0, 0); tctx.globalAlpha = m; tctx.drawImage(B, 0, 0);
   }
   tctx.restore();
 }

@@ -280,12 +280,12 @@ function buildAmbUI() {
   AMB_DEFS.forEach(([k, label]) => {
     const row = document.createElement('div'); row.className = 'row';
     row.innerHTML = `<label>${label}</label><input type="range" min="0" max="1" step="0.05" value="${PA.audio.amb[k]}">`;
-    row.querySelector('input').oninput = e => { PA.audio.amb[k] = +e.target.value; };
+    row.querySelector('input').oninput = e => { PA.audio.amb[k] = +e.target.value; liveAudioUpdate(); };
     box.appendChild(row);
   });
-  $('#masterVol').value = PA.audio.master;
+  $('#masterVol').value = PA.audio.master; liveAudioUpdate();
 }
-$('#masterVol').oninput = e => { PA.audio.master = +e.target.value; };
+$('#masterVol').oninput = e => { PA.audio.master = +e.target.value; liveAudioUpdate(); };
 $$('.ambpre').forEach(b => b.onclick = () => { Object.assign(PA.audio.amb, AMB_PRESETS[b.dataset.amb]); buildAmbUI(); });
 $('#audPreview').onclick = async () => { const on = await togglePreviewSound(); $('#audPreview').textContent = on ? '⏹ Stop preview' : '🔊 Preview sound'; };
 $('#musicFile').onchange = async e => {
@@ -293,8 +293,14 @@ $('#musicFile').onchange = async e => {
   try { PA.audio.music = await decodeBlob(f); PA.audio.musicName = f.name; $('#musicStatus').textContent = 'Loaded: ' + f.name + ' (loops under the whole video).'; }
   catch (err) { $('#musicStatus').textContent = 'Could not read that audio file.'; }
 };
-$('#musicVol').oninput = e => { PA.audio.musicVol = +e.target.value; };
-$('#musicClear').onclick = () => { PA.audio.music = null; PA.audio.musicName = ''; $('#musicStatus').textContent = ''; $('#musicFile').value = ''; };
+$('#musicVol').oninput = e => { PA.audio.musicVol = +e.target.value; liveAudioUpdate(); if (ONE && ONE.tag === 'music') ONE.gain.gain.value = PA.audio.musicVol; };
+$('#musicPlay').onclick = () => {
+  if (ONE && ONE.tag === 'music') return stopOne();
+  if (!PA.audio.music) return toast('Choose a music file first.');
+  $('#musicPlay').textContent = '■ Stop music';
+  playOne(PA.audio.music, { loop: true, vol: PA.audio.musicVol, tag: 'music', onend: () => { $('#musicPlay').textContent = '▶ Preview music'; } });
+};
+$('#musicClear').onclick = () => { if (ONE && ONE.tag === 'music') stopOne(); PA.audio.music = null; PA.audio.musicName = ''; $('#musicStatus').textContent = ''; $('#musicFile').value = ''; };
 function refreshVoice() {
   const sc = curScene(), has = !!(sc && sc.voice);
   $('#voicePlay').disabled = !has; $('#voiceClear').disabled = !has;
@@ -312,7 +318,12 @@ $('#voiceRec').onclick = async () => {
   } catch (e) { $('#voiceStatus').textContent = 'Microphone not available: ' + (e.message || e); }
 };
 $('#voiceStop').onclick = () => voiceStop();
-$('#voicePlay').onclick = () => { const sc = curScene(); if (sc.voice) playBufferOnce(sc.voice); };
+$('#voicePlay').onclick = () => {
+  if (ONE && ONE.tag === 'voice') return stopOne();
+  const sc = curScene(); if (!sc.voice) return;
+  $('#voicePlay').textContent = '■ Stop';
+  playOne(sc.voice, { tag: 'voice', onend: () => { $('#voicePlay').textContent = '▶ Play'; } });
+};
 $('#voiceClear').onclick = () => { const sc = curScene(); sc.voice = null; sc.voiceName = ''; refreshVoice(); $('#voiceStatus').textContent = 'Voice-over removed.'; };
 $('#voiceFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return; const sc = curScene();
@@ -347,22 +358,25 @@ $('#loadFile').onchange = async e => {
 /* ---------- play controls ---------- */
 $('#play').onclick = () => {
   const now = performance.now();
-  if (PA.playing) { PA.tFrozen = (now - PA.t0) / 1000; PA.playing = false; $('#play').textContent = '▶ Play'; }
-  else { PA.t0 = now - PA.tFrozen * 1000; PA.playing = true; $('#play').textContent = '⏸ Pause'; }
+  if (PA.playing) { PA.tFrozen = (now - PA.t0) / 1000; PA.playing = false; $('#play').textContent = '▶ Play'; stopLiveAudio(); }
+  else {
+    PA.t0 = now - PA.tFrozen * 1000; PA.playing = true; $('#play').textContent = '⏸ Pause'; stopOne();
+    if (hasAnySound()) { const d = Math.max(1, curScene().dur); startLiveAudio('scene', ((PA.tFrozen % d) + d) % d); }
+  }
 };
 let scrubbing = false;
 $('#scrub').addEventListener('pointerdown', () => { scrubbing = true; });
 window.addEventListener('pointerup', () => { scrubbing = false; });
 $('#scrub').oninput = e => {
   const sc = curScene(); if (!sc) return;
-  PA.playing = false; $('#play').textContent = '▶ Play'; setPreviewTime(+e.target.value / 1000 * sc.dur * .999);
+  PA.playing = false; $('#play').textContent = '▶ Play'; stopLiveAudio(); setPreviewTime(+e.target.value / 1000 * sc.dur * .999);
 };
 $('#playAll').onclick = () => {
   if (PA.mode === 'project') { endProjectPlayback(); return; }
   if (PA.busy) return;
   stopPreviewSound();
   const lay = projectLayout();
-  if (hasAnySound()) { const ctx = new AudioCtor(); ctx.resume(); buildAudio(ctx, ctx.destination, lay.total, lay, ctx.currentTime + .12); previewCtx = ctx; }
+  stopOne(); if (hasAnySound()) startLiveAudio('project', 0);
   $('#playAll').textContent = '■ Stop';
   startProjectPlayback(() => { $('#playAll').textContent = '▶ Play all scenes'; stopPreviewSound(); });
 };
