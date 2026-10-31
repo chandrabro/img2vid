@@ -212,7 +212,7 @@ function commitCut(mask, nameHint, behavior) {
   const a = {
     kind: 'actor', name: nameHint || ('Cut-out ' + (sc.actors.length + 1)),
     nx: bb.x / W, ny: bb.y / H, nw: bb.w / W, nh: bb.h / H, mask: mc, cut: null,
-    behavior: behavior || 'stay', facesLeft: false, speed: 1, size: 1, gait: 1, bob: 1, peck: false, shadow: true, persp: true, delay: 0,
+    behavior: behavior || 'stay', idle: 'breathe', idleAmt: 1, head: 0, headFrac: .25, facesLeft: false, speed: 1, size: 1, gait: 1, bob: 1, peck: false, shadow: true, persp: true, delay: 0,
     path: [], area: null, seed: Math.random()
   };
   buildActorCut(sc, a, true);
@@ -377,8 +377,17 @@ function drawActor(sc, a, st, t) {
   const step = Math.max(6, bw * .4), ph = st.dist / step * Math.PI;
   const bob = st.moving ? Math.abs(Math.sin(ph)) * bh * .035 * a.bob : 0;
   const rock = st.moving ? Math.sin(ph) * .035 * a.bob : 0;
-  const breath = st.moving ? 0 : Math.sin(t * 2.2 + a.seed * 6) * .012;
-  const rot = rock + st.pk * .42;
+  const amt = a.idleAmt == null ? 1 : a.idleAmt, idle = a.idle || 'breathe', sd = a.seed * 6;
+  let breath = 0, sway = 0;
+  if (!st.moving) {
+    if (idle === 'sleep') breath = Math.sin(t * 1.3 + sd) * .02 * amt;
+    else if (idle === 'none') breath = 0;
+    else breath = Math.sin(t * 2.2 + sd) * (idle === 'sway' ? .014 : .012) * amt;
+    if (idle === 'sway') sway = Math.sin(t * 1.25 + sd) * .012 * amt + Math.sin(t * .6 + sd * 2) * .006 * amt;
+  }
+  const rot = rock + st.pk * .42 + sway;
+  /* head-only nod (rotates just the top part of the body about the neck) */
+  const headA = (a.head > 0 && !st.moving && st.pk === 0) ? Math.max(0, Math.sin(t * 1.5 + sd)) * Math.max(0, Math.sin(t * .47 + sd)) * .16 * a.head : 0;
   if (a.shadow) {
     const rx = bw * s * .42;
     vctx.save(); vctx.translate(st.x, st.y - 1); vctx.scale(1, .2);
@@ -397,6 +406,11 @@ function drawActor(sc, a, st, t) {
       const dx = Math.sin(ph) * bw * .045 * a.gait * leg;
       vctx.drawImage(a.cut, 0, y, bw, hh, dx, y, bw, hh);
     }
+  } else if (headA > .002) {
+    const hf = clamp(a.headFrac || .25, .1, .45), hh = Math.max(2, Math.round(bh * hf));
+    vctx.drawImage(a.cut, 0, hh, bw, bh - hh, 0, hh, bw, bh - hh);
+    vctx.save(); vctx.translate(bw / 2, hh); vctx.rotate(headA * (a.facesLeft ? -1 : 1)); vctx.translate(-bw / 2, -hh);
+    vctx.drawImage(a.cut, 0, 0, bw, hh + 1, 0, 0, bw, hh + 1); vctx.restore();
   } else vctx.drawImage(a.cut, 0, 0);
   vctx.restore();
 }

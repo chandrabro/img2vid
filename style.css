@@ -66,3 +66,4 @@ a.btn{display:inline-block;text-decoration:none;margin-top:8px}
 .tlrow .tbar i.l{left:0}.tlrow .tbar i.r{right:0}
 #playhead{position:absolute;top:0;bottom:0;width:2px;background:#ff5a5a;pointer-events:none;left:120px}
 .tool-hint-on{outline:1px solid var(--acc)}
+#outVideo{max-width:100%;max-height:70vh;background:#000;border-radius:10px}

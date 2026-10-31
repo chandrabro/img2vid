@@ -87,30 +87,20 @@ async function detectObjects(canvas, onText) {
   return m.detect(canvas, 20, .25);
 }
 function detectFire(sc) {
-  const gw = 160, gh = Math.max(1, Math.round(gw * H / W));
+  /* flame = very bright saturated orange with dark surroundings (hearth), in the lower part of the picture */
+  const gw = 280, gh = Math.max(8, Math.round(gw * H / W)), N = gw * gh;
   const c = makeCanvas(gw, gh), cx = c.getContext('2d', { willReadFrequently: true });
   cx.drawImage(sc.orig, 0, 0, gw, gh);
-  const d = cx.getImageData(0, 0, gw, gh).data, m = new Uint8Array(gw * gh);
-  for (let i = 0; i < gw * gh; i++) {
-    const R = d[i * 4], G = d[i * 4 + 1], B = d[i * 4 + 2];
-    if (R > 235 && G > 165 && B < 150 && R - B > 100) m[i] = 1;
+  const d = cx.getImageData(0, 0, gw, gh).data, org = new Float32Array(N), dk = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const R = d[i * 4], G = d[i * 4 + 1], B = d[i * 4 + 2], y = ((i / gw) | 0) / gh;
+    if (y > .6 && R > 235 && G > 160 && G < 215 && B < 110 && G < R * .9) org[i] = 1;
+    if ((R + G + B) / 3 < 100) dk[i] = 1;
   }
-  const seen = new Uint8Array(gw * gh); let best = null;
-  for (let i = 0; i < gw * gh; i++) {
-    if (!m[i] || seen[i]) continue;
-    const st = [i]; seen[i] = 1; let n = 0, x0 = gw, y0 = gh, x1 = 0, y1 = 0;
-    while (st.length) {
-      const q = st.pop(), x = q % gw, y = (q / gw) | 0;
-      n++; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
-      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
-        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) return;
-        const j = ny * gw + nx; if (m[j] && !seen[j]) { seen[j] = 1; st.push(j); }
-      });
-    }
-    if (n >= 6 && (!best || n > best.n)) best = { n, x0, y0, x1, y1 };
-  }
-  if (!best) return null;
-  const bw = (best.x1 - best.x0 + 1) / gw, bh = (best.y1 - best.y0 + 1) / gh;
-  const w = Math.max(.05, bw * 1.6), h = Math.max(.07, bh * 1.6);
-  return { x: clamp(best.x0 / gw + bw / 2 - w / 2, 0, 1 - w), y: clamp(best.y0 / gh + bh / 2 - h / 2, 0, 1 - h), w, h };
+  const bo = boxBlurF(org, gw, gh, 1), bd = boxBlurF(dk, gw, gh, 5), m = new Uint8Array(N);
+  for (let i = 0; i < N; i++) if (bo[i] > .12 && bd[i] > .12) m[i] = 1;
+  const cs = components(m, gw, gh, 3); if (!cs.length) return null;
+  const b = cs[0], bw = (b.x1 - b.x0 + 1) / gw, bh = (b.y1 - b.y0 + 1) / gh;
+  const w = Math.max(.05, bw * 1.5), h = Math.max(.07, bh * 1.6);
+  return { x: clamp(b.x0 / gw + bw / 2 - w / 2, 0, 1 - w), y: clamp(b.y0 / gh + bh / 2 - h / 2, 0, 1 - h), w, h };
 }

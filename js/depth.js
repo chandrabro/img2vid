@@ -100,5 +100,10 @@ function camParams(sc, tl) {
     case 'sway': c.zoom = 1.08; c.shift = [Math.sin(ang) * .05 * amt, 0]; break;
     case 'push': c.zoom = 1.02; c.push = .12 * amt * e; break;
   }
+  /* overscan: always zoom in enough that no sample can fall outside the picture (no blank/stretched edges) */
+  const f = sc.depthOn && sc.depth ? Math.max(sc.depthFocus, 1 - sc.depthFocus, .5) : 1, k = sc.depthOn && sc.depth ? 1 : .6;
+  const mx = Math.abs(c.pan[0]) + Math.abs(c.shift[0]) * f * k, my = Math.abs(c.pan[1]) + Math.abs(c.shift[1]) * f * k;
+  const m = Math.min(.42, Math.max(mx, my) + .012), need = 1 / (1 - 2 * m) + Math.abs(c.push) * f;
+  if (c.zoom < need) c.zoom = need;
   return c;
 }

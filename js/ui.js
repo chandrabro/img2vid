@@ -3,11 +3,12 @@
 const TOOL_HINTS = {
   'cut-lasso': 'Drag all the way around the thing you want to cut out, then let go. Take your time: the closer the outline, the cleaner the result.',
   'cut-box': 'Drag a box around the whole thing (hen, dog, person). The app guesses the outline from the colours. Works best when it stands out from the background.',
+  'cut-body': 'Tap on a person or animal. The app finds the whole body and makes only that body move (breathing, sway, head nod). Needs the free detector (small download, once).',
   'cut-ai': 'Tap on the thing to cut it out, or drag a box around it for a more exact outline. Needs the AI model (Load AI model button).',
   path: 'Drag from where the cut-out stands to where it should walk, or tap to add path points one by one. It walks there and back.',
   area: 'Drag a box on the ground where the cut-out may wander. It strolls to random spots inside it and pecks.'
 };
-const CUT_TOOLS = ['cut-lasso', 'cut-box', 'cut-ai'];
+const CUT_TOOLS = ['cut-lasso', 'cut-box', 'cut-body', 'cut-ai'];
 const isRegionTool = t => !!EFFECTS[t] && t !== 'pin';
 
 /* ---------- tabs ---------- */
@@ -58,7 +59,7 @@ async function loadFiles(files) {
 }
 function onScenesReady() {
   $('#drop').hidden = true; $('#stageBox').hidden = false;
-  ['#auto', '#autoWalk', '#recFast', '#recRT', '#recGif', '#btnSave'].forEach(s => { $(s).disabled = false; });
+  ['#auto', '#autoHuman', '#autoAnimal', '#autoThing', '#autoWalk', '#recFast', '#recRT', '#recGif', '#btnSave'].forEach(s => { $(s).disabled = false; });
   setPreviewTime(0); refreshAll();
 }
 $('#file').onchange = e => { loadFiles(e.target.files); e.target.value = ''; };
@@ -131,11 +132,11 @@ function refreshPinPanel() {
 }
 function deleteSelected() {
   const sc = curScene(); if (!sc) return;
-  if (PA.selKind === 'region' && sc.regions[PA.selIdx]) { sc.regions.splice(PA.selIdx, 1); PA.selKind = null; PA.selIdx = -1; PA.selPin = -1; refreshAll(); }
+  if (PA.selKind === 'region' && sc.regions[PA.selIdx]) { const g = sc.regions[PA.selIdx].gid; if (g) removeGid(g); sc.regions.splice(PA.selIdx, 1); PA.selKind = null; PA.selIdx = -1; PA.selPin = -1; refreshAll(); }
   else if (PA.selKind === 'actor' && sc.actors[PA.selIdx]) { deleteActor(PA.selIdx); refreshAll(); }
 }
 $('#selDel').onclick = deleteSelected;
-$('#clear').onclick = () => { const sc = curScene(); sc.regions = []; PA.selKind = null; PA.selIdx = -1; refreshAll(); };
+$('#clear').onclick = () => { const sc = curScene(); sc.regions.forEach(r => { if (r.gid) removeGid(r.gid); }); sc.regions = []; PA.selKind = null; PA.selIdx = -1; refreshAll(); };
 $('#selType').onchange = e => { const r = selRegion(); if (r) { r.type = e.target.value; r._cv = null; r._ck = null; if (r.type === 'puppet' && !r.pins) r.pins = []; refreshAll(); } };
 $('#selStrength').oninput = e => { const r = selRegion(); if (r) r.strength = +e.target.value; };
 $('#selSpeed').oninput = e => { const r = selRegion(); if (r) r.speed = +e.target.value; };
@@ -162,6 +163,7 @@ function refreshActors() {
     $('#actName').value = a.name; $('#actBehavior').value = a.behavior; $('#actFaces').checked = a.facesLeft;
     $('#actSpeed').value = a.speed; $('#actSize').value = a.size; $('#actGait').value = a.gait; $('#actBob').value = a.bob;
     $('#actDelay').max = sc.dur; $('#actDelay').value = a.delay || 0; $('#actDelayVal').textContent = (a.delay || 0) + ' s';
+    $('#actIdle').value = a.idle || 'breathe'; $('#actIdleAmt').value = a.idleAmt == null ? 1 : a.idleAmt; $('#actHead').value = a.head || 0;
     $('#actPeck').checked = a.peck; $('#actShadow').checked = a.shadow; $('#actPersp').checked = a.persp;
     $('#actHint').textContent = a.behavior === 'walk' ? (a.path.length ? `Path has ${a.path.length} point(s). The cut-out walks there and back.` : 'Press "Draw path", then drag on the picture where it should walk.')
       : a.behavior === 'wander' ? (a.area ? 'It wanders inside your area. Press "Set wander area" to change it.' : 'Wandering near where it stands. Press "Set wander area" to choose a bigger area.')
@@ -177,6 +179,7 @@ function refreshActors() {
 const bindAct = (id, key, kind) => { $(id).oninput = $(id).onchange = e => { const a = selActor(); if (!a) return; a[key] = kind === 'check' ? e.target.checked : kind === 'text' ? e.target.value : +e.target.value; a._sched = null; if (key === 'behavior' || key === 'delay') refreshActors(); if (key === 'delay') buildTimeline(); if (key === 'name') refreshActors(); }; };
 bindAct('#actName', 'name', 'text'); bindAct('#actBehavior', 'behavior', 'text'); bindAct('#actFaces', 'facesLeft', 'check');
 bindAct('#actSpeed', 'speed'); bindAct('#actSize', 'size'); bindAct('#actGait', 'gait'); bindAct('#actBob', 'bob'); bindAct('#actDelay', 'delay');
+bindAct('#actIdle', 'idle', 'text'); bindAct('#actIdleAmt', 'idleAmt'); bindAct('#actHead', 'head');
 bindAct('#actPeck', 'peck', 'check'); bindAct('#actShadow', 'shadow', 'check'); bindAct('#actPersp', 'persp', 'check');
 $('#pathClear').onclick = () => { const a = selActor(); if (a) { a.path = []; refreshActors(); } };
 $('#actDel').onclick = () => { if (PA.selKind === 'actor') deleteSelected(); };
@@ -444,6 +447,7 @@ overlay.addEventListener('pointerdown', e => {
     return;
   }
   if (tool === 'cut-lasso') { drag = { mode: 'lasso', pts: [{ x: x * W, y: y * H }] }; return; }
+  if (tool === 'cut-body') { drag = { mode: 'bodyclick', x0: x, y0: y, x1: x, y1: y }; return; }
   if (tool === 'cut-box') { drag = { mode: 'cutbox', x0: x, y0: y, x1: x, y1: y }; return; }
   if (tool === 'cut-ai') { drag = { mode: 'aiclick', x0: x, y0: y, x1: x, y1: y }; return; }
   if (tool === 'path') { if (!selActor()) { toast('Select a cut-out first.'); return; } drag = { mode: 'path', pts: [{ x, y }], moved: false }; return; }
@@ -454,7 +458,7 @@ overlay.addEventListener('pointermove', e => {
   if (!drag) return;
   const { x, y } = ptr(e), r = selRegion();
   switch (drag.mode) {
-    case 'new': case 'cutbox': case 'aiclick': case 'area': drag.x1 = x; drag.y1 = y; break;
+    case 'new': case 'cutbox': case 'aiclick': case 'bodyclick': case 'area': drag.x1 = x; drag.y1 = y; break;
     case 'move': if (r) { r.x = clamp(x - drag.dx, 0, 1 - r.w); r.y = clamp(y - drag.dy, 0, 1 - r.h); } break;
     case 'resize': if (r) { r.w = clamp(x - r.x, .01, 1 - r.x); r.h = clamp(y - r.y, .01, 1 - r.y); } break;
     case 'pin': { const q = r && r.pins[PA.selPin]; if (q) { q.x = clamp((x - r.x) / r.w, 0, 1); q.y = clamp((y - r.y) / r.h, 0, 1); } break; }
@@ -468,7 +472,8 @@ overlay.addEventListener('pointerup', async () => {
   if (d.mode === 'new') {
     const w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0);
     const rect = (w < .012 && h < .012) ? defaultRect(tool, d.x0, d.y0) : normRect(d.x0, d.y0, d.x1, d.y1);
-    sc.regions.push(newRegion(tool, rect)); PA.selKind = 'region'; PA.selIdx = sc.regions.length - 1; PA.selPin = -1; refreshAll();
+    const nr = newRegion(tool, rect); if ($('#applyAll') && $('#applyAll').checked) nr.gid = newGid();
+    sc.regions.push(nr); PA.selKind = 'region'; PA.selIdx = sc.regions.length - 1; PA.selPin = -1; refreshAll();
   } else if (d.mode === 'move' || d.mode === 'resize' || d.mode === 'pin') { refreshPinPanel(); }
   else if (d.mode === 'lasso') {
     if (d.pts.length < 8) return toast('Draw all the way around the thing, then let go.');
@@ -476,12 +481,21 @@ overlay.addEventListener('pointerup', async () => {
   } else if (d.mode === 'cutbox') {
     const b = { x: Math.min(d.x0, d.x1) * W, y: Math.min(d.y0, d.y1) * H, w: Math.abs(d.x1 - d.x0) * W, h: Math.abs(d.y1 - d.y0) * H };
     if (b.w < 10 || b.h < 10) return toast('Drag a box around the whole thing.');
-    await boxCutFlow(b, null); showTab('cut');
+    let nm = null, cls = null;
+    if ($('#snapBody').checked) { setAiStatus('Looking for the whole body…'); const wb = await findWholeBody(sc, b, setAiStatus); if (wb) { Object.assign(b, wb.box); cls = wb.cls; toast('Whole ' + wb.cls + ' found'); setAiStatus('Whole ' + wb.cls + ' found.'); } }
+    const a0 = await boxCutFlow(b, nm); if (cls) applyBodyDefaults(a0, cls); refreshAll(); showTab('cut');
+  } else if (d.mode === 'bodyclick') {
+    setAiStatus('Looking for the whole body…'); toast('Looking for a person or animal…');
+    const wb = await findWholeBody(sc, { x: d.x0 * W, y: d.y0 * H }, setAiStatus);
+    if (!wb) return toast('No person or animal found there (the detector needs internet once). Try "Box it" or "Draw around it".');
+    const a0 = await boxCutFlow(wb.box, null); applyBodyDefaults(a0, wb.cls); refreshAll(); setAiStatus('Whole ' + wb.cls + ' cut out. Only it moves. Tap another one.'); showTab('cut');
   } else if (d.mode === 'aiclick') {
     const moved = Math.abs(d.x1 - d.x0) > .01 || Math.abs(d.y1 - d.y0) > .01;
-    if (!AI.sam) return toast('Press "Load AI model" first (it is optional). Meanwhile "Box it" and "Draw around it" work.');
-    const prompt = moved ? { box: [Math.min(d.x0, d.x1) * W, Math.min(d.y0, d.y1) * H, Math.max(d.x0, d.x1) * W, Math.max(d.y0, d.y1) * H] } : { points: [[d.x0 * W, d.y0 * H, 1]] };
-    try { toast('AI is cutting it out…'); const m = await aiSegment(sc, prompt, setAiStatus); commitCut(m, null); setAiStatus('Done. Tap another thing, or choose its behaviour.'); }
+    let wbCls = null, wbBox = null;
+    if ($('#snapBody').checked && !moved) { const wb = await findWholeBody(sc, { x: d.x0 * W, y: d.y0 * H }, setAiStatus); if (wb) { wbCls = wb.cls; wbBox = wb.box; } }
+    if (!AI.sam) { if (wbBox) { const a0 = await boxCutFlow(wbBox, null); applyBodyDefaults(a0, wbCls); refreshAll(); return; } return toast('Press "Load AI model" first (it is optional). Meanwhile "Box it" and "Draw around it" work.'); }
+    const prompt = wbBox ? { box: [wbBox.x, wbBox.y, wbBox.x + wbBox.w, wbBox.y + wbBox.h] } : moved ? { box: [Math.min(d.x0, d.x1) * W, Math.min(d.y0, d.y1) * H, Math.max(d.x0, d.x1) * W, Math.max(d.y0, d.y1) * H] } : { points: [[d.x0 * W, d.y0 * H, 1]] };
+    try { toast('AI is cutting it out…'); const m = await aiSegment(sc, prompt, setAiStatus); const a1 = commitCut(m, null); if (wbCls) { applyBodyDefaults(a1, wbCls); refreshAll(); } setAiStatus('Done. Tap another thing, or choose its behaviour.'); }
     catch (err) { console.error(err); setAiStatus('AI cut failed: ' + (err.message || err)); }
   } else if (d.mode === 'path') {
     const a = selActor(); if (!a) return;
@@ -540,38 +554,6 @@ function drawOverlay() {
 }
 
 /* ---------- auto detect ---------- */
-$('#auto').onclick = async () => {
-  const sc = curScene(); if (!sc) return;
-  $('#auto').disabled = true; sc.regions = sc.regions.filter(r => !r.auto);
-  const found = [];
-  setStatus('Looking for fire…');
-  const f = detectFire(sc);
-  if (f) {
-    sc.regions.push(newRegion('fire', f, { auto: true })); found.push('fire');
-    const sw = Math.min(.2, f.w * 1.2), sh = Math.min(.3, f.y + .02);
-    if (sh > .05) sc.regions.push(newRegion('smoke', { x: clamp(f.x + f.w / 2 - sw / 2, 0, 1 - sw), y: Math.max(0, f.y - sh + .03), w: sw, h: sh }, { auto: true, strength: .9 }));
-  }
-  try {
-    const preds = await detectObjects(sc.orig, setStatus);
-    const ANIM = new Set(['dog', 'cat', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe']);
-    preds.forEach(p => {
-      const [bx, by, bw, bh] = p.bbox;
-      const rect = { x: clamp(bx / W, 0, 1), y: clamp(by / H, 0, 1), w: bw / W, h: bh / H };
-      rect.w = Math.min(rect.w, 1 - rect.x); rect.h = Math.min(rect.h, 1 - rect.y);
-      const add = (t, rc, ex) => sc.regions.push(newRegion(t, rc, Object.assign({ auto: true }, ex || {})));
-      if (ANIM.has(p.class)) { add('breathe', rect); found.push(p.class); }
-      else if (p.class === 'bird') { add('peck', { x: rect.x, y: rect.y, w: rect.w, h: rect.h * .5 }); found.push('bird (shrink its box to the head, or use Cut-outs to make it walk)'); }
-      else if (p.class === 'person') {
-        add('breathe', rect, { strength: .6 });
-        if (rect.h > .08) add('nod', { x: rect.x + rect.w * .2, y: rect.y, w: rect.w * .6, h: Math.min(rect.h * .24, .12) }, { strength: .8 });
-        found.push('person (head nod)');
-      } else if (p.class === 'potted plant') { add('sway', rect); found.push('plant'); }
-    });
-  } catch (err) { console.warn(err); setStatus('The detection model could not load (internet needed once). Fire detection and the manual tools still work.'); $('#auto').disabled = false; refreshAll(); return; }
-  PA.selKind = null; PA.selIdx = -1; refreshAll();
-  setStatus(found.length ? 'Found: ' + found.join(', ') + '. Check the boxes, then add anything missing.' : 'Nothing obvious found. Please add effects by hand.');
-  $('#auto').disabled = false;
-};
 $('#autoWalk').onclick = async () => {
   const sc = curScene(); if (!sc) return;
   $('#autoWalk').disabled = true;
@@ -596,6 +578,7 @@ $('#autoWalk').onclick = async () => {
 
 /* ---------- refresh everything ---------- */
 function refreshAll() {
+  if (typeof syncGlobals === 'function') syncGlobals(true);
   refreshStrip(); refreshFx(); refreshActors(); refreshScenePane(); refreshVoice(); buildTimeline(); updateTotal();
 }
 

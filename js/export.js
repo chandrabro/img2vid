@@ -157,8 +157,8 @@ async function exportGif() {
 }
 
 /* ---- save / load project ---- */
-const REGION_KEYS = ['type', 'x', 'y', 'w', 'h', 'strength', 'speed', 'mirror', 'delay', 'end', 'seed', 'pins'];
-const ACTOR_KEYS = ['name', 'nx', 'ny', 'nw', 'nh', 'behavior', 'facesLeft', 'speed', 'size', 'gait', 'bob', 'peck', 'shadow', 'persp', 'delay', 'path', 'area', 'seed'];
+const REGION_KEYS = ['type', 'x', 'y', 'w', 'h', 'strength', 'speed', 'mirror', 'delay', 'end', 'seed', 'pins', 'gid'];
+const ACTOR_KEYS = ['name', 'nx', 'ny', 'nw', 'nh', 'behavior', 'facesLeft', 'speed', 'size', 'gait', 'bob', 'peck', 'shadow', 'persp', 'delay', 'path', 'area', 'seed', 'idle', 'idleAmt', 'head', 'headFrac'];
 function imgToDataURL(img, maxSide) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, s = Math.min(1, maxSide / Math.max(iw, ih));
   const c = makeCanvas(Math.round(iw * s), Math.round(ih * s)); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);

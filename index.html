@@ -61,6 +61,7 @@
   <nav class="tabs" id="tabs">
     <button data-tab="fx" class="on">✨ Effects</button>
     <button data-tab="cut">✂️ Cut-outs</button>
+    <button data-tab="all">🌐 All scenes</button>
     <button data-tab="scene">🎬 Scene</button>
     <button data-tab="sound">🔊 Sound</button>
     <button data-tab="export">📤 Export</button>
@@ -69,9 +70,15 @@
   <!-- ============ EFFECTS ============ -->
   <div class="pane" data-pane="fx">
     <div class="card">
-      <h2>Auto-detect (optional)</h2>
-      <button id="auto" disabled>✨ Find things to animate</button>
-      <p class="small">Finds fire, animals, birds, people and plants and adds effects. The first run downloads a small free AI model (internet needed once). It is a best guess: fix or delete anything wrong.</p>
+      <h2>Auto-detect</h2>
+      <div class="tools">
+        <button id="autoHuman" disabled>🧑 Humans</button>
+        <button id="autoAnimal" disabled>🐕 Animals</button>
+        <button id="autoThing" disabled>🌳 Non-living things</button>
+        <button id="auto" disabled>✨ Everything</button>
+      </div>
+      <p class="small"><b>Non-living</b> (works offline): clouds, trees &amp; leaves, sunlight, fire and smoke. <b>Humans</b> and <b>Animals</b> find the <b>whole body</b> with a free AI detector (small download, once), cut each one out and move <i>only that body</i> (breathing, sway, head nod; birds peck and wander). Best guesses: fix or delete anything wrong.</p>
+      <label class="chk"><input id="applyAllDetect" type="checkbox"> apply detected things to <b>all scenes</b></label>
     </div>
 
     <div class="card">
@@ -119,6 +126,7 @@
       <p class="small">Lift a hen, dog or person out of the picture so it can walk around. The empty spot is filled in automatically.</p>
       <div class="tools">
         <button class="cutmode" data-tool="cut-lasso">✏️ Draw around it</button>
+        <button class="cutmode" data-tool="cut-body">🧍 Tap a person / animal</button>
         <button class="cutmode" data-tool="cut-box">⬚ Box it (auto)</button>
         <button class="cutmode" data-tool="cut-ai" id="cutAIbtn">🪄 AI: tap on it</button>
         <button id="aiPrep">⬇ Load AI model</button>
@@ -126,6 +134,7 @@
       <p id="aiStatus" class="small">AI is optional (about 40 MB, downloaded once). Without it, "Box it" uses a colour-based guess and "Draw around it" always works.</p>
       <div class="row"><label>Edge</label><input id="cutGrow" type="range" min="-3" max="4" step="1" value="0"><span class="small">grow / shrink</span></div>
       <div class="row"><label>Soften</label><input id="cutFeather" type="range" min="0" max="4" step="1" value="1"><span class="small">px</span></div>
+      <label class="chk"><input id="snapBody" type="checkbox" checked> snap to the <b>whole body</b> of a person / animal (needs the free detector)</label>
       <p id="cutHint" class="small"></p>
     </div>
 
@@ -141,6 +150,11 @@
         <div class="row"><button id="toolPath" class="tbtn">〰 Draw path</button><button id="pathClear">Clear path</button></div>
         <div class="row"><button id="toolArea" class="tbtn">⬚ Set wander area</button></div>
         <p id="actHint" class="small"></p>
+        <div class="row"><label>Body motion</label><select id="actIdle">
+          <option value="breathe">Breathing</option><option value="sway">Gentle sway (people)</option>
+          <option value="sleep">Slow sleep breathing</option><option value="none">Still</option></select></div>
+        <div class="row"><label>Body amount</label><input id="actIdleAmt" type="range" min="0" max="3" step="0.05"></div>
+        <div class="row"><label>Head nod</label><input id="actHead" type="range" min="0" max="2" step="0.05"><span class="small">only the head moves</span></div>
         <div class="row"><label>Faces left</label><input id="actFaces" type="checkbox"> <span class="small">tick if the cut-out looks to the left</span></div>
         <div class="row"><label>Speed</label><input id="actSpeed" type="range" min="0.2" max="3" step="0.05"></div>
         <div class="row"><label>Size</label><input id="actSize" type="range" min="0.4" max="2" step="0.05"></div>
@@ -157,6 +171,24 @@
       <div id="actList" class="chips"></div>
       <div class="row"><button id="autoWalk" disabled>🐔 Detect &amp; make walkers</button></div>
       <p class="small">Finds birds, animals and people with the free AI detector, cuts each one out and gives it a walk. Check the result and fix it with the tools above.</p>
+    </div>
+  </div>
+
+  <!-- ============ ALL SCENES ============ -->
+  <div class="pane" data-pane="all" hidden>
+    <div class="card">
+      <h2>Effects for all scenes at once</h2>
+      <p class="small">An effect marked 🌐 is placed in the <b>same region of every scene</b>. Change it in one scene and every scene follows. New scenes you add get them too.</p>
+      <label class="chk"><input id="applyAll" type="checkbox"> every effect I draw is applied to <b>all scenes</b></label>
+      <div class="row" style="margin-top:10px"><label>Quick add</label><select id="gType"></select><button id="gAdd">＋ Add to all scenes</button></div>
+      <p class="small">Quick add puts the effect in the middle of every scene; then drag and resize it in the picture.</p>
+    </div>
+    <div class="card">
+      <h2>Global effects</h2>
+      <div id="gList" class="chips"></div>
+      <div class="row"><button id="gMake">🌐 Make selected effect global</button><button id="gLocal">Make selected local</button></div>
+      <div class="row"><button id="gCopyAll">Copy ALL effects of this scene to every scene</button></div>
+      <div class="row"><button id="gClear">🗑 Remove all global effects</button></div>
     </div>
   </div>
 
@@ -271,6 +303,8 @@
 <script src="js/render.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/export.js"></script>
+<script src="js/detect.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/ui2.js"></script>
 </body>
 </html>
