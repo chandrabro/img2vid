@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Photo Animator Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>🎞️ Photo Animator Studio</h1>
+    <p>Turn pictures into living stories. 100% free: runs in your browser, no server, no paid API.</p>
+  </div>
+  <div class="hbtns">
+    <button id="btnSave" disabled>💾 Save project</button>
+    <button id="btnLoad">📂 Open project</button>
+    <input id="loadFile" type="file" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<main>
+<section id="stageCol">
+  <label id="drop" class="drop">
+    <b>Drop a picture here</b>
+    <span>or tap to choose one or more images (JPG / PNG / WebP)</span>
+    <input id="file" type="file" accept="image/*" multiple hidden>
+  </label>
+
+  <div id="stageBox" hidden>
+    <div class="canvaswrap">
+      <canvas id="view"></canvas>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div class="bar">
+      <button id="play">⏸ Pause</button>
+      <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Time">
+      <span id="timeLbl" class="small mono">0.0 / 6.0 s</span>
+      <button id="playAll">▶ Play all scenes</button>
+    </div>
+    <div id="status" class="small"></div>
+    <p id="hint" class="small"></p>
+
+    <div id="timelineCard" class="card">
+      <h2>Timeline <span class="small">(drag the bars: when each effect starts and ends)</span></h2>
+      <div id="tl"><div id="tlRows"></div><div id="playhead"></div></div>
+    </div>
+
+    <div id="strip" class="strip"></div>
+  </div>
+
+  <div id="result" class="card" hidden>
+    <h2>Your video</h2>
+    <video id="outVideo" controls loop playsinline></video>
+    <a id="dl" class="btn primary" download>⬇ Download</a>
+    <p id="fmtNote" class="small"></p>
+  </div>
+</section>
+
+<aside>
+  <nav class="tabs" id="tabs">
+    <button data-tab="fx" class="on">✨ Effects</button>
+    <button data-tab="cut">✂️ Cut-outs</button>
+    <button data-tab="scene">🎬 Scene</button>
+    <button data-tab="sound">🔊 Sound</button>
+    <button data-tab="export">📤 Export</button>
+  </nav>
+
+  <!-- ============ EFFECTS ============ -->
+  <div class="pane" data-pane="fx">
+    <div class="card">
+      <h2>Auto-detect (optional)</h2>
+      <button id="auto" disabled>✨ Find things to animate</button>
+      <p class="small">Finds fire, animals, birds, people and plants and adds effects. The first run downloads a small free AI model (internet needed once). It is a best guess: fix or delete anything wrong.</p>
+    </div>
+
+    <div class="card">
+      <h2>Add an effect</h2>
+      <div id="tools" class="tools"></div>
+      <p id="toolHint" class="small"></p>
+    </div>
+
+    <div class="card">
+      <h2>Selected effect</h2>
+      <div id="selNone" class="small">Nothing selected. Pick ✋ Select and tap a box, or choose from the list below.</div>
+      <div id="selBox" hidden>
+        <div class="row"><label>Type</label><select id="selType"></select></div>
+        <div class="row"><label>Strength</label><input id="selStrength" type="range" min="0.2" max="2.5" step="0.05"></div>
+        <div class="row"><label>Speed</label><input id="selSpeed" type="range" min="0.3" max="3" step="0.05"></div>
+        <div class="row"><label>Starts at</label><input id="selDelay" type="range" min="0" max="30" step="0.5" value="0"><span id="selDelayVal" class="small">0 s</span></div>
+        <div class="row"><label>Ends at</label><input id="selEnd" type="range" min="0" max="30" step="0.5" value="0"><span id="selEndVal" class="small">end</span></div>
+        <div class="row"><label>Mirror</label><input id="selMirror" type="checkbox"> <span class="small">flip (facing left, tail side, birds)</span></div>
+        <div id="pinPanel" hidden>
+          <h2 style="margin-top:10px">🧵 Pins</h2>
+          <p class="small">Choose <b>📍 Pin</b> in the tools list, then tap inside the box. <b>Anchor</b> pins stay still, the other kinds move. Drag a pin to place it.</p>
+          <div class="row"><button id="pinPresetHang">Hang &amp; swing</button><button id="pinPresetHead">Head bob</button><button id="pinPresetArm">Arm wave</button></div>
+          <div class="row"><label>New pin</label><select id="pinKind">
+            <option value="anchor">⚓ Anchor (stays)</option><option value="swing">↔ Swing</option><option value="circle">⟳ Circle</option>
+            <option value="bounce">⤴ Bounce</option><option value="sway">〰 Sway</option><option value="wave">↕ Wave</option></select></div>
+          <div id="pinSel" hidden>
+            <div class="row"><label>Amount</label><input id="pinAmp" type="range" min="0.01" max="0.25" step="0.005"></div>
+            <div class="row"><label>Speed</label><input id="pinSpeed" type="range" min="0.3" max="3" step="0.05"></div>
+            <div class="row"><label>Phase</label><input id="pinPhase" type="range" min="0" max="6.28" step="0.1"></div>
+            <div class="row"><button id="pinDel">Delete pin</button></div>
+          </div>
+        </div>
+        <button id="selDel">🗑 Delete this effect</button>
+      </div>
+      <h2 style="margin-top:14px">All effects in this scene</h2>
+      <div id="list" class="chips"></div>
+      <div class="row"><button id="clear">Clear all effects</button></div>
+    </div>
+  </div>
+
+  <!-- ============ CUT-OUTS ============ -->
+  <div class="pane" data-pane="cut" hidden>
+    <div class="card">
+      <h2>1 · Cut something out</h2>
+      <p class="small">Lift a hen, dog or person out of the picture so it can walk around. The empty spot is filled in automatically.</p>
+      <div class="tools">
+        <button class="cutmode" data-tool="cut-lasso">✏️ Draw around it</button>
+        <button class="cutmode" data-tool="cut-box">⬚ Box it (auto)</button>
+        <button class="cutmode" data-tool="cut-ai" id="cutAIbtn">🪄 AI: tap on it</button>
+        <button id="aiPrep">⬇ Load AI model</button>
+      </div>
+      <p id="aiStatus" class="small">AI is optional (about 40 MB, downloaded once). Without it, "Box it" uses a colour-based guess and "Draw around it" always works.</p>
+      <div class="row"><label>Edge</label><input id="cutGrow" type="range" min="-3" max="4" step="1" value="0"><span class="small">grow / shrink</span></div>
+      <div class="row"><label>Soften</label><input id="cutFeather" type="range" min="0" max="4" step="1" value="1"><span class="small">px</span></div>
+      <p id="cutHint" class="small"></p>
+    </div>
+
+    <div class="card">
+      <h2>2 · Make it move</h2>
+      <div id="actNone" class="small">No cut-outs yet. Cut one out first, or use "Detect &amp; make walkers".</div>
+      <div id="actBox" hidden>
+        <div class="row"><label>Name</label><input id="actName" type="text"></div>
+        <div class="row"><label>Behaviour</label><select id="actBehavior">
+          <option value="stay">Stay (breathe / peck)</option>
+          <option value="walk">Walk along my path</option>
+          <option value="wander">Wander around an area</option></select></div>
+        <div class="row"><button id="toolPath" class="tbtn">〰 Draw path</button><button id="pathClear">Clear path</button></div>
+        <div class="row"><button id="toolArea" class="tbtn">⬚ Set wander area</button></div>
+        <p id="actHint" class="small"></p>
+        <div class="row"><label>Faces left</label><input id="actFaces" type="checkbox"> <span class="small">tick if the cut-out looks to the left</span></div>
+        <div class="row"><label>Speed</label><input id="actSpeed" type="range" min="0.2" max="3" step="0.05"></div>
+        <div class="row"><label>Size</label><input id="actSize" type="range" min="0.4" max="2" step="0.05"></div>
+        <div class="row"><label>Leg step</label><input id="actGait" type="range" min="0" max="2.5" step="0.05"></div>
+        <div class="row"><label>Bounce</label><input id="actBob" type="range" min="0" max="2.5" step="0.05"></div>
+        <div class="row"><label>Starts at</label><input id="actDelay" type="range" min="0" max="30" step="0.5"><span id="actDelayVal" class="small">0 s</span></div>
+        <div class="row"><label>Options</label>
+          <label class="chk"><input id="actPeck" type="checkbox"> peck</label>
+          <label class="chk"><input id="actShadow" type="checkbox"> shadow</label>
+          <label class="chk"><input id="actPersp" type="checkbox"> perspective</label></div>
+        <button id="actDel">🗑 Delete cut-out (puts the picture back)</button>
+      </div>
+      <h2 style="margin-top:14px">Cut-outs in this scene</h2>
+      <div id="actList" class="chips"></div>
+      <div class="row"><button id="autoWalk" disabled>🐔 Detect &amp; make walkers</button></div>
+      <p class="small">Finds birds, animals and people with the free AI detector, cuts each one out and gives it a walk. Check the result and fix it with the tools above.</p>
+    </div>
+  </div>
+
+  <!-- ============ SCENE ============ -->
+  <div class="pane" data-pane="scene" hidden>
+    <div class="card">
+      <h2>This scene</h2>
+      <div class="row"><label>Length</label><input id="dur" type="range" min="2" max="30" step="1" value="6"><span id="durVal" class="small">6 s</span></div>
+      <div class="row"><label>Caption</label><input id="caption" type="text" maxlength="120" placeholder="e.g. Morning in the village"></div>
+      <div class="row"><label>Into next</label><select id="transType">
+        <option value="fade">Fade</option><option value="dip">Dip to black</option><option value="slide">Slide</option><option value="wipe">Wipe</option><option value="none">Cut</option></select>
+        <input id="transDur" type="range" min="0.3" max="2.5" step="0.1" value="0.8" style="max-width:90px"><span id="transVal" class="small">0.8 s</span></div>
+    </div>
+
+    <div class="card">
+      <h2>🎥 Camera</h2>
+      <div class="row"><label>Move</label><select id="camMode">
+        <option value="breathe">Gentle zoom in &amp; out</option><option value="in">Zoom in</option><option value="out">Zoom out</option>
+        <option value="left">Pan left</option><option value="right">Pan right</option>
+        <option value="orbit">Orbit (3D with depth)</option><option value="sway">Side sway (3D with depth)</option><option value="push">Push in (3D with depth)</option>
+        <option value="none">Still</option></select></div>
+      <div class="row"><label>Amount</label><input id="camAmt" type="range" min="0.2" max="2" step="0.05" value="1"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏔 Depth (real 3D camera)</h2>
+      <p class="small">Gives the picture depth so near things move more than far things when the camera moves. <b>Quick</b> is instant (ground in front, sky far). <b>AI</b> reads the actual picture (about 25 MB download once).</p>
+      <div class="row"><button id="depthQuick">⚡ Quick depth</button><button id="depthAI">🤖 AI depth</button><button id="depthOff">Off</button></div>
+      <div class="row"><label>Focus</label><input id="depthFocus" type="range" min="0" max="1" step="0.02" value="0.5"></div>
+      <div class="row"><label>Horizon</label><input id="horizon" type="range" min="0.05" max="0.9" step="0.01" value="0.38"><span class="small">(quick depth, walker size)</span></div>
+      <div class="row"><label>Invert</label><input id="depthInv" type="checkbox"> <span class="small">if near and far look swapped</span></div>
+      <p id="depthStatus" class="small">Depth is off.</p>
+    </div>
+
+    <div class="card">
+      <h2>🌅 Light &amp; time of day</h2>
+      <div class="row"><label>Start</label><select id="lightFrom"></select></div>
+      <div class="row"><label>End</label><select id="lightTo"></select></div>
+      <p class="small">The light changes smoothly from Start to End during the scene (for example Dawn → Morning).</p>
+    </div>
+
+    <div class="card">
+      <h2>One-click moods</h2>
+      <p class="small">Sets light, sound, camera and adds sky and air effects to this scene.</p>
+      <div class="tools">
+        <button class="preset" data-preset="morning">🌄 Village morning</button>
+        <button class="preset" data-preset="sunset">🌇 Golden sunset</button>
+        <button class="preset" data-preset="night">🌙 Night &amp; fire</button>
+        <button class="preset" data-preset="rain">🌧 Rainy day</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SOUND ============ -->
+  <div class="pane" data-pane="sound" hidden>
+    <div class="card">
+      <h2>Ambient sounds (made in your browser)</h2>
+      <div id="ambBox"></div>
+      <div class="row"><label>Master</label><input id="masterVol" type="range" min="0" max="1" step="0.05" value="0.9"></div>
+      <div class="row">
+        <button class="ambpre" data-amb="village">Village</button><button class="ambpre" data-amb="night">Night</button>
+        <button class="ambpre" data-amb="river">River</button><button class="ambpre" data-amb="rain">Rain</button><button class="ambpre" data-amb="off">Silent</button>
+      </div>
+      <div class="row"><button id="audPreview">🔊 Preview sound</button></div>
+    </div>
+    <div class="card">
+      <h2>Your own music / audio</h2>
+      <div class="row"><input id="musicFile" type="file" accept="audio/*"></div>
+      <div class="row"><label>Volume</label><input id="musicVol" type="range" min="0" max="1" step="0.05" value="0.5"><button id="musicClear">Remove</button></div>
+      <p id="musicStatus" class="small"></p>
+    </div>
+    <div class="card">
+      <h2>🎙 Voice-over for this scene</h2>
+      <div class="row"><button id="voiceRec">● Record</button><button id="voiceStop" disabled>■ Stop</button><button id="voicePlay" disabled>▶ Play</button><button id="voiceClear" disabled>Remove</button></div>
+      <div class="row"><label>Or a file</label><input id="voiceFile" type="file" accept="audio/*"></div>
+      <p id="voiceStatus" class="small">Uses your microphone. The recording starts at the beginning of this scene in the final video. (Browser text-to-speech cannot be captured into a video, so record your own voice.)</p>
+    </div>
+  </div>
+
+  <!-- ============ EXPORT ============ -->
+  <div class="pane" data-pane="export" hidden>
+    <div class="card">
+      <h2>Video settings</h2>
+      <div class="row"><label>Quality</label><select id="res"><option value="960">Fast (960 px)</option><option value="1280" selected>HD (1280 px)</option><option value="1920">Full HD (1920 px)</option></select></div>
+      <div class="row"><label>Frames</label><select id="fpsSel"><option value="24">24 per second</option><option value="30" selected>30 per second</option></select></div>
+      <p class="small">Total length: <b id="totalLen">0 s</b> (all scenes, minus overlaps).</p>
+    </div>
+    <div class="card">
+      <h2>Make the video</h2>
+      <button id="recFast" class="primary" disabled>⚡ Fast MP4 (recommended)</button>
+      <p class="small">Renders much faster than real time and works in the background. Includes sound where the browser supports it.</p>
+      <button id="recRT" disabled>🔴 Record in real time (with sound)</button>
+      <p class="small">Works in every modern browser. Keep this tab open and visible until it finishes.</p>
+      <button id="recGif" disabled>🖼 Make a GIF</button>
+      <p class="small">Small, silent, loops. Good for chat apps.</p>
+      <progress id="prog" value="0" max="1" hidden></progress>
+      <p id="expStatus" class="small"></p>
+    </div>
+    <div class="card">
+      <h2>Project</h2>
+      <p class="small">Use 💾 Save project at the top to keep your work (pictures, effects, cut-outs, sound settings) in a file, and 📂 Open project to continue later. Voice-overs and uploaded music are not saved in the file.</p>
+    </div>
+  </div>
+</aside>
+</main>
+
+<script src="js/core.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/actors.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/depth.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/export.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
