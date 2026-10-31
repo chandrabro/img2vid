@@ -96,7 +96,7 @@ function detectNonLiving(sc) {
 async function bodyPreds(sc, onText) {
   if (sc._bodies) return sc._bodies;
   const preds = await detectObjects(sc.orig, onText);
-  sc._bodies = preds.filter(p => p.class === 'person' || ANIMAL_CLASSES.has(p.class)).map(p => ({
+  sc._bodies = preds.filter(p => (p.class === 'person' || ANIMAL_CLASSES.has(p.class)) && p.score >= .5 && p.bbox[2] * p.bbox[3] < W * H * .45).map(p => ({
     cls: p.class, score: p.score, x: p.bbox[0], y: p.bbox[1], w: p.bbox[2], h: p.bbox[3]
   }));
   return sc._bodies;

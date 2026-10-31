@@ -187,7 +187,7 @@ function buildActorCut(sc, a, inpaint) {
   cx.drawImage(sc.base, bx, by, bw, bh, 0, 0, bw, bh);
   cx.globalCompositeOperation = 'destination-in'; cx.drawImage(m, 0, 0);
   a.cut = cut;
-  if (inpaint) {
+  if (inpaint && a.behavior !== 'stay') { /* only things that walk away leave a hole that needs filling */
     const M = Math.max(10, Math.round(.15 * Math.max(bw, bh)));
     const rx = Math.max(0, bx - M), ry = Math.max(0, by - M), rw = Math.min(W, bx + bw + M) - rx, rh = Math.min(H, by + bh + M) - ry;
     const rc = makeCanvas(rw, rh), rctx = rc.getContext('2d'); rctx.drawImage(m, bx - rx, by - ry);

@@ -176,7 +176,7 @@ function refreshActors() {
   });
   if (!list.children.length) list.innerHTML = '<span class="small">None yet.</span>';
 }
-const bindAct = (id, key, kind) => { $(id).oninput = $(id).onchange = e => { const a = selActor(); if (!a) return; a[key] = kind === 'check' ? e.target.checked : kind === 'text' ? e.target.value : +e.target.value; a._sched = null; if (key === 'behavior' || key === 'delay') refreshActors(); if (key === 'delay') buildTimeline(); if (key === 'name') refreshActors(); }; };
+const bindAct = (id, key, kind) => { $(id).oninput = $(id).onchange = e => { const a = selActor(); if (!a) return; a[key] = kind === 'check' ? e.target.checked : kind === 'text' ? e.target.value : +e.target.value; a._sched = null; if (key === 'behavior') { rebuildActors(curScene()); } if (key === 'behavior' || key === 'delay') refreshActors(); if (key === 'delay') buildTimeline(); if (key === 'name') refreshActors(); }; };
 bindAct('#actName', 'name', 'text'); bindAct('#actBehavior', 'behavior', 'text'); bindAct('#actFaces', 'facesLeft', 'check');
 bindAct('#actSpeed', 'speed'); bindAct('#actSize', 'size'); bindAct('#actGait', 'gait'); bindAct('#actBob', 'bob'); bindAct('#actDelay', 'delay');
 bindAct('#actIdle', 'idle', 'text'); bindAct('#actIdleAmt', 'idleAmt'); bindAct('#actHead', 'head');
@@ -501,11 +501,11 @@ overlay.addEventListener('pointerup', async () => {
     const a = selActor(); if (!a) return;
     if (d.moved) a.path = d.pts.slice(1).map(p => ({ x: p.x, y: p.y }));
     else a.path = a.path.concat([{ x: d.pts[0].x, y: d.pts[0].y }]);
-    a.behavior = 'walk'; a._sched = null; refreshActors();
+    a.behavior = 'walk'; a._sched = null; rebuildActors(sc); refreshActors();
   } else if (d.mode === 'area') {
     const a = selActor(); if (!a) return;
     const q = normRect(d.x0, d.y0, d.x1, d.y1);
-    if (q.w > .02 && q.h > .01) { a.area = q; a.behavior = 'wander'; a.peck = a.peck || true; a._sched = null; refreshActors(); }
+    if (q.w > .02 && q.h > .01) { a.area = q; a.behavior = 'wander'; a.peck = a.peck || true; a._sched = null; rebuildActors(sc); refreshActors(); }
   }
 });
 window.addEventListener('keydown', e => {

@@ -82,12 +82,15 @@ async function runDetect(kind) {
       try { await addBodies(sc, kind === 'human' || kind === 'all', kind === 'animal' || kind === 'all', found); }
       catch (err) { console.warn(err); setStatus('The people/animal detector could not load (internet needed once). Non-living detection and manual tools still work.'); btns.forEach(b => { b.disabled = false; }); refreshAll(); return; }
     }
-    sc._bodies = sc._bodies; refreshAll();
-    setStatus(found.length ? 'Found: ' + [...new Set(found)].join(', ') + '. Check them, then fix or delete anything wrong.' : 'Nothing obvious found for that choice. Add effects by hand.');
-  } catch (err) { console.error(err); setStatus('Detection failed: ' + (err.message || err)); }
-  btns.forEach(b => { b.disabled = false; });
+    refreshAll();
+    const msg = found.length ? 'Found: ' + [...new Set(found)].join(', ') + '. Check them, then fix or delete anything wrong.' : (sc.actors.length ? 'Nothing new found (already-detected things are skipped). Use "Remove all cut-outs" to start again.' : 'Nothing obvious found for that choice. Add effects by hand.');
+    setStatus(msg); toast(msg);
+  } catch (err) { console.error(err); setStatus('Detection failed: ' + (err.message || err)); toast('Detection failed: ' + (err.message || err)); }
+  finally { btns.forEach(b => { b.disabled = false; }); }
 }
 $('#auto').onclick = () => runDetect('all');
 $('#autoHuman').onclick = () => runDetect('human');
 $('#autoAnimal').onclick = () => runDetect('animal');
 $('#autoThing').onclick = () => runDetect('thing');
+
+$('#actClearAll').onclick = () => { const sc = curScene(); if (!sc) return; sc.actors = []; rebuildActors(sc); PA.selKind = null; PA.selIdx = -1; refreshAll(); toast('All cut-outs removed, picture restored.'); };
