@@ -49,7 +49,7 @@ function buildGlobalList() {
 /* ---------- auto-detect by category ---------- */
 async function addThings(sc, found, global) {
   const items = detectNonLiving(sc);
-  sc.regions = sc.regions.filter(r => !(r.auto && !r.gid));
+  sc.regions = sc.regions.filter(r => !(r.auto && !r.gid && !r.body));
   items.forEach(it => {
     const r = newRegion(it.type, it.rect, Object.assign({ auto: true }, it.extra || {}));
     if (global) r.gid = newGid();
@@ -58,34 +58,45 @@ async function addThings(sc, found, global) {
 }
 const iouBox = (a, b) => { const iw = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), ih = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y); if (iw <= 0 || ih <= 0) return 0; const i = iw * ih; return i / (a.w * a.h + b.w * b.h - i); };
 async function addBodies(sc, wantPerson, wantAnimal, found) {
-  const list = (await bodyPreds(sc, setStatus)).filter(p => (p.cls === 'person' ? wantPerson : wantAnimal && p.cls !== 'person')).sort((a, b) => b.w * b.h - a.w * a.h).slice(0, 8);
+  const list = (await bodyPreds(sc, msg)).filter(p => (p.cls === 'person' ? wantPerson : wantAnimal && p.cls !== 'person')).sort((a, b) => b.w * b.h - a.w * a.h).slice(0, 10);
   if (!list.length) return 0;
+  const cut = $('#cutBodies').checked, glob = $('#applyAllDetect').checked;
+  if (!cut) sc.regions = sc.regions.filter(r => !(r.auto && !r.gid && r.body && r.body === (list[0].cls === 'person' ? 'person' : 'animal') && list.every(q => (q.cls === 'person') === (list[0].cls === 'person'))));
   let n = 0; const counts = {};
   for (const p of list) {
     const box = { x: p.x, y: p.y, w: p.w, h: p.h };
-    if (sc.actors.some(a => iouBox(box, { x: a.nx * W, y: a.ny * H, w: a.nw * W, h: a.nh * H }) > .4)) continue;
     counts[p.cls] = (counts[p.cls] || 0) + 1; n++;
+    if (!cut) {
+      const rc = { x: clamp(p.x / W, 0, 1), y: clamp(p.y / H, 0, 1), w: p.w / W, h: p.h / H };
+      rc.w = Math.min(rc.w, 1 - rc.x); rc.h = Math.min(rc.h, 1 - rc.y);
+      const add = (t, r, ex) => { const q = newRegion(t, r, Object.assign({ auto: true, body: p.cls === 'person' ? 'person' : 'animal' }, ex || {})); if (glob) q.gid = newGid(); sc.regions.push(q); };
+      if (p.cls === 'person') { add('breathe', rc, { strength: .6 }); if (rc.h > .08) add('nod', { x: rc.x + rc.w * .2, y: rc.y, w: rc.w * .6, h: Math.min(rc.h * .24, .12) }, { strength: .8 }); found.push('person'); }
+      else if (p.cls === 'bird') { add('peck', { x: rc.x, y: rc.y, w: rc.w, h: rc.h * .5 }); found.push('bird'); }
+      else { add('breathe', rc); found.push(p.cls); }
+      continue;
+    }
+    if (sc.actors.some(a => iouBox(box, { x: a.nx * W, y: a.ny * H, w: a.nw * W, h: a.nh * H }) > .4)) continue;
     const nm = p.cls.charAt(0).toUpperCase() + p.cls.slice(1) + ' ' + counts[p.cls];
-    setStatus(`Cutting out the whole ${p.cls} (${n} of ${list.length})…`); await sleep(20);
-    const wb = await findWholeBody(sc, { x: p.x + p.w / 2, y: p.y + p.h / 2 }, setStatus);
-    const a = await boxCutFlow(wb ? wb.box : box, nm, 'stay'); applyBodyDefaults(a, p.cls); found.push(p.cls);
+    msg(`Cutting out the whole ${p.cls} (${n} of ${list.length})…`); await sleep(20);
+    const a = await boxCutFlow(box, nm, 'stay'); applyBodyDefaults(a, p.cls); found.push(p.cls);
   }
   return n;
 }
+function msg(t) { setStatus(t); const e = $('#detectMsg'); if (e) e.textContent = t; }
 async function runDetect(kind) {
   const sc = curScene(); if (!sc) return;
-  const btns = ['#auto', '#autoHuman', '#autoAnimal', '#autoThing'].map($); btns.forEach(b => { b.disabled = true; });
-  const found = [], glob = $('#applyAllDetect').checked;
+  const btns = ['#auto', '#autoHuman', '#autoAnimal', '#autoThing'].map(s => $(s)); btns.forEach(b => { b.disabled = true; });
+  const found = [], glob = $('#applyAllDetect').checked; msg('Working…');
   try {
-    if (kind === 'thing' || kind === 'all') { setStatus('Looking for clouds, trees, sunlight, fire…'); await sleep(20); await addThings(sc, found, glob); PA.selKind = null; PA.selIdx = -1; if (glob) syncGlobals(); refreshAll(); }
+    if (kind === 'thing' || kind === 'all') { msg('Looking for clouds, trees, sunlight, fire…'); await sleep(20); await addThings(sc, found, glob); PA.selKind = null; PA.selIdx = -1; if (glob) syncGlobals(); refreshAll(); }
     if (kind !== 'thing') {
       try { await addBodies(sc, kind === 'human' || kind === 'all', kind === 'animal' || kind === 'all', found); }
-      catch (err) { console.warn(err); setStatus('The people/animal detector could not load (internet needed once). Non-living detection and manual tools still work.'); btns.forEach(b => { b.disabled = false; }); refreshAll(); return; }
+      catch (err) { console.warn(err); msg('The people/animal detector could not load (' + (err.message || err) + '). It needs internet once. Non-living detection and the manual tools still work.'); btns.forEach(b => { b.disabled = false; }); refreshAll(); return; }
     }
     refreshAll();
-    const msg = found.length ? 'Found: ' + [...new Set(found)].join(', ') + '. Check them, then fix or delete anything wrong.' : (sc.actors.length ? 'Nothing new found (already-detected things are skipped). Use "Remove all cut-outs" to start again.' : 'Nothing obvious found for that choice. Add effects by hand.');
-    setStatus(msg); toast(msg);
-  } catch (err) { console.error(err); setStatus('Detection failed: ' + (err.message || err)); toast('Detection failed: ' + (err.message || err)); }
+    const m2 = found.length ? 'Found: ' + [...new Set(found)].join(', ') + '. Check them, then fix or delete anything wrong.' : (sc.actors.length ? 'Nothing new found (already-detected things are skipped). Use "Remove all cut-outs" to start again.' : 'Nothing obvious found for that choice. Add effects by hand.');
+    msg(m2); toast(m2);
+  } catch (err) { console.error(err); msg('Detection failed: ' + (err.message || err)); toast('Detection failed: ' + (err.message || err)); }
   finally { btns.forEach(b => { b.disabled = false; }); }
 }
 $('#auto').onclick = () => runDetect('all');

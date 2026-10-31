@@ -77,8 +77,10 @@
         <button id="autoThing" disabled>🌳 Non-living things</button>
         <button id="auto" disabled>✨ Everything</button>
       </div>
-      <p class="small"><b>Non-living</b> (works offline): clouds, trees &amp; leaves, sunlight, fire and smoke. <b>Humans</b> and <b>Animals</b> find the <b>whole body</b> with a free AI detector (small download, once), cut each one out and move <i>only that body</i> (breathing, sway, head nod; birds peck and wander). Best guesses: fix or delete anything wrong.</p>
-      <label class="chk"><input id="applyAllDetect" type="checkbox"> apply detected things to <b>all scenes</b></label>
+      <p class="small"><b>Non-living</b> (works offline): clouds, trees &amp; leaves, sunlight, fire and smoke. <b>Humans</b> and <b>Animals</b> find the <b>whole body</b> with a free AI detector (small download, once) and draw a box around each one with effects (breathing, head nod, pecking). Tick "cut out" to lift each body out so <i>only that body</i> moves. Best guesses: fix or delete anything wrong.</p>
+      <label class="chk"><input id="applyAllDetect" type="checkbox"> apply detected things to <b>all scenes</b></label><br>
+      <label class="chk"><input id="cutBodies" type="checkbox"> also <b>cut out</b> each whole body (more realistic, slower)</label>
+      <p id="detectMsg" class="small" style="color:#ffb454"></p>
     </div>
 
     <div class="card">
